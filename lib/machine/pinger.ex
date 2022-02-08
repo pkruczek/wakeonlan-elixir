@@ -1,5 +1,4 @@
 defmodule Machine.Pinger do
-
   def ping(address) do
     address
     |> execute_ping_command()
@@ -16,5 +15,4 @@ defmodule Machine.Pinger do
   defp ping_command do
     Application.get_env(:wakeonlan, :ping_command, "ping")
   end
-
 end

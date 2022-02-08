@@ -3,7 +3,8 @@ defmodule Machine.Server do
 
   @impl true
   def init(address) do
-    :timer.send_interval(:timer.seconds(5), self(), :tick) #TODO: maybe an Application.get_env
+    # TODO: maybe an Application.get_env
+    :timer.send_interval(:timer.seconds(5), self(), :tick)
     {:ok, %{address: address, task: nil, enabled: false}}
   end
 
@@ -26,25 +27,28 @@ defmodule Machine.Server do
 
   @impl true
   def handle_info(:tick, %{task: nil, address: address} = state) do
-    task = Task.Supervisor.async_nolink(Machine.Pinger.Supervisor, Machine.Pinger, :ping, [address])
+    task =
+      Task.Supervisor.async_nolink(Machine.Pinger.Supervisor, Machine.Pinger, :ping, [address])
+
     {:noreply, %{state | task: task}}
   end
 
   @impl true
   def handle_info(:tick, %{task: task} = state) do
-     Process.exit(task.pid, :kill) 
-     {:noreply, state}
+    Process.exit(task.pid, :kill)
+    {:noreply, state}
   end
 
   @impl true
   def handle_info({ref, result}, %{task: %{ref: ref}} = state) do
     Process.demonitor(ref, [:flush])
-    {:noreply, %{state | enabled: result, task: nil}} 
+    {:noreply, %{state | enabled: result, task: nil}}
   end
 
   @impl true
   def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = state) do
-     {:noreply, %{state | enabled: false, task: nil}} #TODO: enabled: false?
+    # TODO: enabled: false?
+    {:noreply, %{state | enabled: false, task: nil}}
   end
 
   defp via_tuple(machine_address) do
