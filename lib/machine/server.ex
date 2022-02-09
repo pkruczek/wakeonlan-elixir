@@ -2,7 +2,7 @@ defmodule Machine.Server do
   use GenServer, restart: :transient
 
   @impl true
-  def init({address, state_change_callback}) do
+  def init(address) do
     # TODO: maybe an Application.get_env
     :timer.send_interval(:timer.seconds(5), self(), :tick)
 
@@ -12,14 +12,14 @@ defmodule Machine.Server do
        task: nil,
        enabled: false,
        listeners: %{},
-       state_change_callback: state_change_callback
+       state_change_callback: fn _ -> :ok end
      }}
   end
 
-  def start_link({address, state_changed_callback}) do
+  def start_link(address) do
     GenServer.start_link(
       __MODULE__,
-      {address, state_changed_callback},
+      address,
       name: via_tuple(address)
     )
   end
@@ -30,6 +30,10 @@ defmodule Machine.Server do
 
   def subscribe(pid) do
     GenServer.call(pid, :subscribe)
+  end
+
+  def register_callback(pid, callback) do
+    GenServer.call(pid, {:register_callback, callback})
   end
 
   @impl true
@@ -45,6 +49,11 @@ defmodule Machine.Server do
       ref = Process.monitor(pid)
       {:reply, :ok, %{state | listeners: Map.put(listeners, pid, ref)}}
     end
+  end
+
+  @impl true
+  def handle_call({:register_callback, callback}, _, state) do
+    {:reply, :ok, %{state | state_change_callback: callback}}
   end
 
   @impl true
@@ -67,7 +76,11 @@ defmodule Machine.Server do
   end
 
   @impl true
-  def handle_info({ref, result}, %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} = state) do
+  def handle_info(
+        {ref, result},
+        %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} =
+          state
+      ) do
     Process.demonitor(ref, [:flush])
 
     if enabled != result do
@@ -78,7 +91,11 @@ defmodule Machine.Server do
   end
 
   @impl true
-  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} = state) do
+  def handle_info(
+        {:DOWN, ref, :process, _pid, _reason},
+        %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} =
+          state
+      ) do
     # TODO: enabled: false?
     if enabled do
       state_change_callback.(false)
