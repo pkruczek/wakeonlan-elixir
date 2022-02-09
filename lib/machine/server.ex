@@ -2,16 +2,24 @@ defmodule Machine.Server do
   use GenServer, restart: :transient
 
   @impl true
-  def init(address) do
+  def init({address, state_change_callback}) do
     # TODO: maybe an Application.get_env
     :timer.send_interval(:timer.seconds(5), self(), :tick)
-    {:ok, %{address: address, task: nil, enabled: false, listeners: %{}}}
+
+    {:ok,
+     %{
+       address: address,
+       task: nil,
+       enabled: false,
+       listeners: %{},
+       state_change_callback: state_change_callback
+     }}
   end
 
-  def start_link(address) do
+  def start_link({address, state_changed_callback}) do
     GenServer.start_link(
       __MODULE__,
-      address,
+      {address, state_changed_callback},
       name: via_tuple(address)
     )
   end
@@ -32,16 +40,16 @@ defmodule Machine.Server do
   @impl true
   def handle_call(:subscribe, {pid, _}, %{listeners: listeners} = state) do
     if Map.has_key?(listeners, pid) do
-        {:reply, :already_listener, state}
+      {:reply, :already_listener, state}
     else
-        ref = Process.monitor(pid)
-        {:reply, :ok, %{state | listeners: Map.put(listeners, pid, ref)}}
+      ref = Process.monitor(pid)
+      {:reply, :ok, %{state | listeners: Map.put(listeners, pid, ref)}}
     end
   end
 
   @impl true
   def handle_info(:tick, %{listeners: listeners} = state) when map_size(listeners) == 0 do
-      {:stop, :normal, state}
+    {:stop, :normal, state}
   end
 
   @impl true
@@ -59,20 +67,29 @@ defmodule Machine.Server do
   end
 
   @impl true
-  def handle_info({ref, result}, %{task: %{ref: ref}} = state) do
+  def handle_info({ref, result}, %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} = state) do
     Process.demonitor(ref, [:flush])
+
+    if enabled != result do
+      state_change_callback.(result)
+    end
+
     {:noreply, %{state | enabled: result, task: nil}}
   end
 
   @impl true
-  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}} = state) do
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} = state) do
     # TODO: enabled: false?
+    if enabled do
+      state_change_callback.(false)
+    end
+
     {:noreply, %{state | enabled: false, task: nil}}
   end
 
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, _reason}, %{listeners: listeners} = state) do
-     {:noreply, %{state | listeners: Map.delete(listeners, pid)}} 
+    {:noreply, %{state | listeners: Map.delete(listeners, pid)}}
   end
 
   defp via_tuple(machine_address) do
