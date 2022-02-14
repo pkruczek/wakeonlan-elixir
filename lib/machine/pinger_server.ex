@@ -1,4 +1,4 @@
-defmodule Machine.Server do
+defmodule Machine.Pinger.Server do
   use GenServer, restart: :transient
 
   @impl true
@@ -115,6 +115,6 @@ defmodule Machine.Server do
 
   defp get_process_timeout do
     Application.get_env(:wakeonlan, :pinger_server_timeout, 5)
-    |> :timer.seconds
+    |> :timer.seconds()
   end
 end

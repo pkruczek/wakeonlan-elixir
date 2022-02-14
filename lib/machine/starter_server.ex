@@ -16,7 +16,9 @@ defmodule Machine.Starter.Server do
 
   @impl true
   def handle_call(:start_machine, _, %{address: address, task: nil} = state) do
-    task = Task.Supervisor.async_nolink(Machine.Starter.Supervisor, Machine.Starter, :start, [address])
+    task =
+      Task.Supervisor.async_nolink(Machine.Starter.Supervisor, Machine.Starter, :start, [address])
+
     Process.send_after(self(), :start_timeout, get_start_timeout())
     {:reply, :ok, %{state | task: task}, get_process_timeout()}
   end
@@ -40,7 +42,7 @@ defmodule Machine.Starter.Server do
   @impl true
   def handle_info({ref, _result}, %{task: %{ref: ref}} = state) do
     Process.demonitor(ref, [:flush])
-    {:noreply, %{state | task: nil}, get_process_timeout()} 
+    {:noreply, %{state | task: nil}, get_process_timeout()}
   end
 
   @impl true
@@ -64,6 +66,6 @@ defmodule Machine.Starter.Server do
 
   defp get_process_timeout do
     Application.get_env(:wakeonlan, :starter_server_timeout, 20)
-    |> :timer.seconds
+    |> :timer.seconds()
   end
 end

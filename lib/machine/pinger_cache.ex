@@ -1,4 +1,4 @@
-defmodule Machine.Cache do
+defmodule Machine.Pinger.Cache do
   def start_link do
     DynamicSupervisor.start_link(
       name: __MODULE__,
@@ -24,7 +24,7 @@ defmodule Machine.Cache do
   defp start_child(machine_address) do
     DynamicSupervisor.start_child(
       __MODULE__,
-      {Machine.Server, machine_address}
+      {Machine.Pinger.Server, machine_address}
     )
   end
 end
