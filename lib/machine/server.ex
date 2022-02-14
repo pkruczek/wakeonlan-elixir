@@ -4,7 +4,7 @@ defmodule Machine.Server do
   @impl true
   def init(address) do
     # TODO: maybe an Application.get_env
-    :timer.send_interval(:timer.seconds(5), self(), :tick)
+    :timer.send_interval(get_process_timeout(), self(), :tick)
 
     {:ok,
      %{
@@ -111,5 +111,10 @@ defmodule Machine.Server do
 
   defp via_tuple(machine_address) do
     Machine.Registry.via_tuple({__MODULE__, machine_address})
+  end
+
+  defp get_process_timeout do
+    Application.get_env(:wakeonlan, :pinger_server_timeout, 5)
+    |> :timer.seconds
   end
 end

@@ -5,7 +5,9 @@ defmodule Wakeonlan.Application do
     children = [
       Machine.Registry,
       Machine.Pinger.Supervisor,
-      Machine.Cache
+      Machine.Cache,
+      Machine.Starter.Supervisor,
+      Machine.Starter.Cache,
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

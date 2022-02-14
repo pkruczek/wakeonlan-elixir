@@ -8,9 +8,9 @@ defmodule Machine.Cache do
 
   def child_spec(_) do
     %{
-        id: __MODULE__,
-        start: {__MODULE__, :start_link, []},
-        type: :supervisor
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []},
+      type: :supervisor
     }
   end
 
