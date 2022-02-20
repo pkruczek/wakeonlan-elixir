@@ -4,15 +4,14 @@ defmodule Machine.Pinger.Server do
   @impl true
   def init(address) do
     # TODO: maybe an Application.get_env
-    :timer.send_interval(get_process_timeout(), self(), :tick)
+    :timer.send_interval(worker_interval(), self(), :tick)
 
     {:ok,
      %{
        address: address,
        task: nil,
        enabled: false,
-       listeners: %{},
-       state_change_callback: fn _ -> :ok end
+       last_query_time: now()
      }}
   end
 
@@ -28,45 +27,18 @@ defmodule Machine.Pinger.Server do
     GenServer.call(pid, :enabled)
   end
 
-  def subscribe(pid) do
-    GenServer.call(pid, :subscribe)
-  end
-
-  def register_callback(pid, callback) do
-    GenServer.call(pid, {:register_callback, callback})
-  end
-
   @impl true
   def handle_call(:enabled, _, state) do
-    {:reply, state.enabled, state}
+    {:reply, state.enabled, %{state | last_query_time: now()}}
   end
 
   @impl true
-  def handle_call(:subscribe, {pid, _}, %{listeners: listeners} = state) do
-    if Map.has_key?(listeners, pid) do
-      {:reply, :already_listener, state}
+  def handle_info(:tick, %{task: nil, address: address, last_query_time: last_query_time} = state) do
+    unless timeout_exceeded?(last_query_time) do
+      {:noreply, %{state | task: start_pinger_task(address)}}
     else
-      ref = Process.monitor(pid)
-      {:reply, :ok, %{state | listeners: Map.put(listeners, pid, ref)}}
+      {:stop, :normal, state}
     end
-  end
-
-  @impl true
-  def handle_call({:register_callback, callback}, _, state) do
-    {:reply, :ok, %{state | state_change_callback: callback}}
-  end
-
-  @impl true
-  def handle_info(:tick, %{listeners: listeners} = state) when map_size(listeners) == 0 do
-    {:stop, :normal, state}
-  end
-
-  @impl true
-  def handle_info(:tick, %{task: nil, address: address} = state) do
-    task =
-      Task.Supervisor.async_nolink(Machine.Pinger.Supervisor, Machine.Pinger, :ping, [address])
-
-    {:noreply, %{state | task: task}}
   end
 
   @impl true
@@ -78,43 +50,44 @@ defmodule Machine.Pinger.Server do
   @impl true
   def handle_info(
         {ref, result},
-        %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} =
-          state
+        %{task: %{ref: ref}} = state
       ) do
     Process.demonitor(ref, [:flush])
-
-    if enabled != result do
-      state_change_callback.(result)
-    end
-
     {:noreply, %{state | enabled: result, task: nil}}
   end
 
   @impl true
   def handle_info(
         {:DOWN, ref, :process, _pid, _reason},
-        %{task: %{ref: ref}, enabled: enabled, state_change_callback: state_change_callback} =
-          state
+        %{task: %{ref: ref}} = state
       ) do
     # TODO: enabled: false?
-    if enabled do
-      state_change_callback.(false)
-    end
-
     {:noreply, %{state | enabled: false, task: nil}}
   end
 
-  @impl true
-  def handle_info({:DOWN, _ref, :process, pid, _reason}, %{listeners: listeners} = state) do
-    {:noreply, %{state | listeners: Map.delete(listeners, pid)}}
+  defp start_pinger_task(address) do
+    Task.Supervisor.async_nolink(Machine.Pinger.Supervisor, Machine.Pinger, :ping, [address])
   end
 
   defp via_tuple(machine_address) do
     Machine.Registry.via_tuple({__MODULE__, machine_address})
   end
 
-  defp get_process_timeout do
-    Application.get_env(:wakeonlan, :pinger_server_timeout, 5)
+  defp timeout_exceeded?(last_query_time) do
+    now() > last_query_time + worker_timeout()
+  end
+
+  defp worker_timeout do
+    Application.get_env(:wakeonlan, :pinger_worker_timeout, 20)
     |> :timer.seconds()
+  end
+
+  defp worker_interval do
+    Application.get_env(:wakeonlan, :pinger_worker_interval, 5)
+    |> :timer.seconds()
+  end
+
+  defp now do
+    :os.system_time(:millisecond)
   end
 end
