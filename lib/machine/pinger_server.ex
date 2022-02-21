@@ -12,7 +12,9 @@ defmodule Machine.Pinger.Server do
        task: nil,
        enabled: false,
        last_query_time: now()
-     }}
+     },
+     {:continue, :initial_ping}
+    }
   end
 
   def start_link(address) do
@@ -30,6 +32,11 @@ defmodule Machine.Pinger.Server do
   @impl true
   def handle_call(:enabled, _, state) do
     {:reply, state.enabled, %{state | last_query_time: now()}}
+  end
+
+  @impl true
+  def handle_continue(:initial_ping, %{address: address} = state) do
+    {:noreply, %{state | task: start_pinger_task(address)}}
   end
 
   @impl true
