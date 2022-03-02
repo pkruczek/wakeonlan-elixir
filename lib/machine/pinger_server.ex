@@ -66,7 +66,7 @@ defmodule Machine.Pinger.Server do
         {:DOWN, ref, :process, _pid, _reason},
         %{task: %{ref: ref}} = state
       ) do
-    {:noreply, %{state | enabled: :undetermined, task: nil}}
+    {:noreply, %{state | enabled: false, task: nil}}
   end
 
   defp start_pinger_task(address) do
