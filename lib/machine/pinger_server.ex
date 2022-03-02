@@ -10,11 +10,9 @@ defmodule Machine.Pinger.Server do
      %{
        address: address,
        task: nil,
-       enabled: false,
+       enabled: :undetermined,
        last_query_time: now()
-     },
-     {:continue, :initial_ping}
-    }
+     }, {:continue, :initial_ping}}
   end
 
   def start_link(address) do
@@ -25,7 +23,7 @@ defmodule Machine.Pinger.Server do
     )
   end
 
-  def enabled?(pid) do
+  def enabled(pid) do
     GenServer.call(pid, :enabled)
   end
 
@@ -68,8 +66,7 @@ defmodule Machine.Pinger.Server do
         {:DOWN, ref, :process, _pid, _reason},
         %{task: %{ref: ref}} = state
       ) do
-    # TODO: enabled: false?
-    {:noreply, %{state | enabled: false, task: nil}}
+    {:noreply, %{state | enabled: :undetermined, task: nil}}
   end
 
   defp start_pinger_task(address) do
