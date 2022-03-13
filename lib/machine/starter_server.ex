@@ -65,7 +65,6 @@ defmodule Machine.Starter.Server do
   end
 
   defp get_process_timeout do
-    Application.get_env(:wakeonlan, :starter_server_timeout, 20)
-    |> :timer.seconds()
+    Application.get_env(:wakeonlan, :starter_server_timeout, :timer.seconds(5))
   end
 end

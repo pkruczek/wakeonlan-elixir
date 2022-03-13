@@ -1,8 +1,8 @@
 defmodule Machine.Pinger do
   @doc """
-  Performs ping for given machine address
+  Performs ping for given machine address.
   """
-  @callback ping(String.t()) :: boolean
+  @callback ping(String.t()) :: boolean()
 
   def ping(address) do
     impl().ping(address)

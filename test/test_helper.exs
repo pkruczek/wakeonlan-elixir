@@ -1,5 +1,8 @@
 Mox.defmock(Machine.MockPinger, for: Machine.Pinger)
+Mox.defmock(Machine.MockStarter, for: Machine.Starter)
 Application.put_env(:wakeonlan, :pinger_impl, Machine.MockPinger)
+Application.put_env(:wakeonlan, :starter_impl, Machine.MockStarter)
 Application.put_env(:wakeonlan, :pinger_worker_timeout, 200)
 Application.put_env(:wakeonlan, :pinger_worker_interval, 100)
+Application.put_env(:wakeonlan, :starter_server_timeout, 200)
 ExUnit.start()

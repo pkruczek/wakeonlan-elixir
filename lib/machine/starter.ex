@@ -1,4 +1,22 @@
 defmodule Machine.Starter do
+  @doc """
+  Starts machine with given tuple address `{mac_address, broadcast}`.
+  """
+  @callback start({String.t(), String.t()}) :: boolean()
+
+  def start({_mac_address, _broadcast_address} = address) do
+    impl().start(address)
+  end
+
+  defp impl() do
+    Application.get_env(:wakeonlan, :starter_impl, Machine.WolStarter)
+  end
+end
+
+defmodule Machine.WolStarter do
+  @behaviour Machine.Starter
+
+  @impl true
   def start({_mac_address, _broadcast_address} = address) do
     address
     |> execute_start_command()
