@@ -1,4 +1,22 @@
 defmodule Machine.Pinger do
+  @doc """
+  Performs ping for given machine address
+  """
+  @callback ping(String.t()) :: boolean
+
+  def ping(address) do
+    impl().ping(address)
+  end
+
+  defp impl do
+    Application.get_env(:wakeonlan, :pinger_impl, Machine.CmdPinger)
+  end
+end
+
+defmodule Machine.CmdPinger do
+  @behaviour Machine.Pinger
+
+  @impl true
   def ping(address) do
     address
     |> execute_ping_command()

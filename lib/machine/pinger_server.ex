@@ -3,7 +3,6 @@ defmodule Machine.Pinger.Server do
 
   @impl true
   def init(address) do
-    # TODO: maybe an Application.get_env
     :timer.send_interval(worker_interval(), self(), :tick)
 
     {:ok,
@@ -82,13 +81,11 @@ defmodule Machine.Pinger.Server do
   end
 
   defp worker_timeout do
-    Application.get_env(:wakeonlan, :pinger_worker_timeout, 20)
-    |> :timer.seconds()
+    Application.get_env(:wakeonlan, :pinger_worker_timeout, :timer.seconds(20))
   end
 
   defp worker_interval do
-    Application.get_env(:wakeonlan, :pinger_worker_interval, 5)
-    |> :timer.seconds()
+    Application.get_env(:wakeonlan, :pinger_worker_interval, :timer.seconds(5))
   end
 
   defp now do
